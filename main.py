@@ -2,6 +2,7 @@ import asyncio
 import websockets
 import json
 import random
+import os
 
 clients = set()
 player_sockets = {}
@@ -111,3 +112,11 @@ async def handler(websocket):
                 "ready": False
             }
             ready_players.clear()
+
+# 🔥 CORRECTAMENTE FUERA DEL handler
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    start_server = websockets.serve(handler, "0.0.0.0", port)
+    asyncio.get_event_loop().run_until_complete(start_server)
+    print(f"Servidor WebSocket activo en el puerto {port}")
+    asyncio.get_event_loop().run_forever()
