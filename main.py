@@ -2,6 +2,7 @@ import asyncio
 import websockets
 import json
 import random
+import os
 
 clients = set()
 game_state = {
@@ -52,11 +53,3 @@ async def handler(websocket):
                     revealed_indices = [i for i, val in enumerate(game_state["revealed"]) if val is not None]
                     if len(revealed_indices) % 2 == 0:
                         last_two = revealed_indices[-2:]
-                        if game_state["revealed"][last_two[0]] != game_state["revealed"][last_two[1]]:
-                            for i in last_two:
-                                game_state["revealed"][i] = None
-                            game_state["turn"] = "A" if game_state["turn"] == "B" else "B"
-                    await notify_state()
-    finally:
-        clients.remove(websocket)
-        del game_state["players"][websocket]
