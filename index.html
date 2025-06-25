@@ -6,40 +6,87 @@
   <style>
     body { font-family: sans-serif; text-align: center; background: #f0f0f0; }
     h1 { margin-top: 20px; }
-    #board { display: grid; grid-template-columns: repeat(4, 100px); gap: 10px; justify-content: center; margin-top: 20px; }
-    .card {
-      width: 100px; height: 100px; background: #1976d2; color: white;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 24px; cursor: pointer; user-select: none; border-radius: 8px;
+    #status { margin: 10px; font-size: 18px; }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(4, 100px);
+      gap: 10px;
+      justify-content: center;
+      margin-top: 20px;
     }
-    .disabled { background: #888; pointer-events: none; }
+    .card {
+      width: 100px; height: 100px;
+      background: #1976d2; color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px; cursor: pointer; user-select: none;
+      border-radius: 8px; transition: background 0.3s;
+    }
+    .disabled { pointer-events: none; background: #999; }
+    .found-A { background: #d32f2f; } /* rojo */
+    .found-B { background: #7b1fa2; } /* morado */
+    #readyBtn {
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    #readyBtn:disabled {
+      background-color: gray;
+      cursor: default;
+    }
   </style>
 </head>
 <body>
+
   <h1>Memorama Online</h1>
   <div id="status">Conectando...</div>
-  <div id="board"></div>
+  <button id="readyBtn">Listo</button>
+  <div id="board" style="display:none;"></div>
 
   <script>
-    const socket = new WebSocket("https://memoria-websocket.onrender.com"); // reemplaza si es necesario
+    const socket = new WebSocket("wss://memoria-websocket.onrender.com"); // cambia si usas otro dominio
     const boardEl = document.getElementById("board");
     const status = document.getElementById("status");
+    const readyBtn = document.getElementById("readyBtn");
+
     let symbol = '';
     let board = [];
     let revealed = [];
+    let matched = [];
+    let matched_by = [];
     let turn = '';
+    let ready_players = [];
+
+    readyBtn.onclick = () => {
+      socket.send(JSON.stringify({ type: "ready" }));
+      readyBtn.disabled = true;
+      status.innerText = "Esperando al otro jugador...";
+    };
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === "init") {
         symbol = data.symbol;
-        status.innerText = "Eres jugador: " + symbol;
+        status.innerText = "Eres el jugador: " + symbol;
       } else if (data.type === "state") {
         board = data.board;
-        revealed = data.revealed;
+        revealed = data.revealed_temp;
+        matched = data.matched;
+        matched_by = data.matched_by;
         turn = data.turn;
-        renderBoard();
-        status.innerText = (turn === symbol) ? "Tu turno" : "Esperando al otro jugador...";
+        ready_players = data.ready_players;
+
+        if (ready_players.length === 2) {
+          boardEl.style.display = "grid";
+          renderBoard();
+          status.innerText = turn === symbol ? "Tu turno" : "Turno del oponente";
+        } else {
+          status.innerText = "Esperando al otro jugador...";
+        }
       }
     };
 
@@ -48,9 +95,14 @@
       for (let i = 0; i < board.length; i++) {
         const card = document.createElement("div");
         card.className = "card";
-        if (revealed[i] !== null) {
-          card.innerText = revealed[i];
+
+        if (matched[i]) {
+          card.innerText = board[i];
           card.classList.add("disabled");
+          if (matched_by[i] === "A") card.classList.add("found-A");
+          if (matched_by[i] === "B") card.classList.add("found-B");
+        } else if (revealed[i] !== null) {
+          card.innerText = revealed[i];
         } else {
           card.innerText = "";
           if (turn !== symbol) card.classList.add("disabled");
@@ -58,9 +110,11 @@
             socket.send(JSON.stringify({ type: "reveal", index: i }));
           };
         }
+
         boardEl.appendChild(card);
       }
     }
   </script>
+
 </body>
 </html>
