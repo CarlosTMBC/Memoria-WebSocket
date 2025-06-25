@@ -48,7 +48,7 @@
   <div id="board" style="display:none;"></div>
 
   <script>
-    const socket = new WebSocket("wss://memoria-websocket.onrender.com"); // cambia si usas otro dominio
+    const socket = new WebSocket("wss://memoria-websocket.onrender.com");
     const boardEl = document.getElementById("board");
     const status = document.getElementById("status");
     const readyBtn = document.getElementById("readyBtn");
@@ -57,9 +57,9 @@
     let board = [];
     let revealed = [];
     let matched = [];
-    let matched_by = [];
+    let match_owner = [];
     let turn = '';
-    let ready_players = [];
+    let gameReady = false;
 
     readyBtn.onclick = () => {
       socket.send(JSON.stringify({ type: "ready" }));
@@ -69,18 +69,19 @@
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
+
       if (data.type === "init") {
         symbol = data.symbol;
         status.innerText = "Eres el jugador: " + symbol;
+
       } else if (data.type === "state") {
         board = data.board;
         revealed = data.revealed_temp;
         matched = data.matched;
-        matched_by = data.matched_by;
+        match_owner = data.match_owner;
         turn = data.turn;
-        ready_players = data.ready_players;
 
-        if (ready_players.length === 2) {
+        if (board && board.length > 0) {
           boardEl.style.display = "grid";
           renderBoard();
           status.innerText = turn === symbol ? "Tu turno" : "Turno del oponente";
@@ -99,8 +100,8 @@
         if (matched[i]) {
           card.innerText = board[i];
           card.classList.add("disabled");
-          if (matched_by[i] === "A") card.classList.add("found-A");
-          if (matched_by[i] === "B") card.classList.add("found-B");
+          if (match_owner[i] === "A") card.classList.add("found-A");
+          if (match_owner[i] === "B") card.classList.add("found-B");
         } else if (revealed[i] !== null) {
           card.innerText = revealed[i];
         } else {
