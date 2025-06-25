@@ -53,3 +53,24 @@ async def handler(websocket):
                     revealed_indices = [i for i, val in enumerate(game_state["revealed"]) if val is not None]
                     if len(revealed_indices) % 2 == 0:
                         last_two = revealed_indices[-2:]
+                        if game_state["revealed"][last_two[0]] != game_state["revealed"][last_two[1]]:
+                            for i in last_two:
+                                game_state["revealed"][i] = None
+                            game_state["turn"] = "A" if game_state["turn"] == "B" else "B"
+                    await notify_state()
+
+    except websockets.exceptions.ConnectionClosed:
+        print("Cliente desconectado")
+    finally:
+        clients.remove(websocket)
+        if websocket in game_state["players"]:
+            del game_state["players"][websocket]
+
+async def main():
+    port = int(os.environ.get("PORT", 10000))
+    async with websockets.serve(handler, "", port):
+        print(f"Servidor corriendo en el puerto {port}")
+        await asyncio.Future()  # Ejecuta indefinidamente
+
+if __name__ == "__main__":
+    asyncio.run(main())
