@@ -4,9 +4,20 @@
   <meta charset="UTF-8" />
   <title>Memorama Online</title>
   <style>
-    body { font-family: sans-serif; text-align: center; background: #f0f0f0; }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background: #f0f0f0;
+    }
     h1 { margin-top: 20px; }
     #status { margin: 10px; font-size: 18px; }
+    #puntos {
+      margin: 10px;
+      font-size: 16px;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+    }
     #board {
       display: grid;
       grid-template-columns: repeat(4, 100px);
@@ -24,34 +35,42 @@
     .disabled { pointer-events: none; background: #999; }
     .found-A { background: #d32f2f; } /* rojo */
     .found-B { background: #7b1fa2; } /* morado */
-    #readyBtn {
+    button {
       padding: 10px 20px;
       font-size: 16px;
-      background-color: #4caf50;
-      color: white;
       border: none;
       border-radius: 5px;
+      color: white;
+      margin: 10px;
       cursor: pointer;
-      margin-top: 20px;
     }
-    #readyBtn:disabled {
-      background-color: gray;
-      cursor: default;
-    }
+    #readyBtn { background-color: #4caf50; }
+    #readyBtn:disabled { background-color: gray; cursor: default; }
+    #resetBtn { background-color: #f44336; }
   </style>
 </head>
 <body>
 
   <h1>Memorama Online</h1>
   <div id="status">Conectando...</div>
+  <div id="puntos">
+    <span id="scoreA">Jugador A: 0 pts</span>
+    <span id="scoreB">Jugador B: 0 pts</span>
+  </div>
+
   <button id="readyBtn">Listo</button>
+  <button id="resetBtn" disabled>Reiniciar Juego</button>
+
   <div id="board" style="display:none;"></div>
 
   <script>
-    const socket = new WebSocket("wss://memoria-websocket.onrender.com");
+    const socket = new WebSocket("wss://memoria-websocket.onrender.com"); // actualiza si cambias dominio
     const boardEl = document.getElementById("board");
     const status = document.getElementById("status");
     const readyBtn = document.getElementById("readyBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const scoreA = document.getElementById("scoreA");
+    const scoreB = document.getElementById("scoreB");
 
     let symbol = '';
     let board = [];
@@ -59,12 +78,18 @@
     let matched = [];
     let match_owner = [];
     let turn = '';
-    let gameReady = false;
+    let puntos = { A: 0, B: 0 };
 
     readyBtn.onclick = () => {
       socket.send(JSON.stringify({ type: "ready" }));
       readyBtn.disabled = true;
       status.innerText = "Esperando al otro jugador...";
+    };
+
+    resetBtn.onclick = () => {
+      socket.send(JSON.stringify({ type: "reset" }));
+      resetBtn.disabled = true;
+      status.innerText = "Esperando reinicio...";
     };
 
     socket.onmessage = (event) => {
@@ -80,13 +105,16 @@
         matched = data.matched;
         match_owner = data.match_owner;
         turn = data.turn;
+        puntos = data.puntos || { A: 0, B: 0 };
 
-        if (board && board.length > 0) {
+        scoreA.innerText = `Jugador A: ${puntos.A} pts`;
+        scoreB.innerText = `Jugador B: ${puntos.B} pts`;
+
+        if (board.length > 0) {
           boardEl.style.display = "grid";
           renderBoard();
           status.innerText = turn === symbol ? "Tu turno" : "Turno del oponente";
-        } else {
-          status.innerText = "Esperando al otro jugador...";
+          resetBtn.disabled = false;
         }
       }
     };
